@@ -1,0 +1,30 @@
+{
+  "short_name": "KistaNepal",
+  "name": "KistaNepal - EMI & Installment Calculator",
+  "description": "Calculate loan EMI, interest rates, down payments, and amortization schedules in Nepal.",
+  "icons": [
+    {
+      "src": "/assets/icon.png",
+      "type": "image/png",
+      "sizes": "192x192 512x512",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/logo.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "categories": [
+    "finance",
+    "utilities"
+  ],
+  "dir": "ltr",
+  "lang": "en-US"
+}
