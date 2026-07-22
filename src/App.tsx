@@ -428,7 +428,7 @@ export default function App() {
             {/* Branding Logo */}
             <div className="flex items-center">
               <img
-                src="/assets/logo.jpg"
+                src="/assets/logo.png"
                 alt="kistanepal.com Logo"
                 className="h-[65px] w-auto max-w-[150px] object-contain transition-transform hover:opacity-90"
                 referrerPolicy="no-referrer"
