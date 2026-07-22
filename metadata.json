@@ -1,0 +1,6 @@
+{
+  "name": "kistanepal.com",
+  "description": "kistanepal.com is a minimalist, high-contrast EMI and EPI loan calculator tailored for Nepali financial standards, featuring dynamic amortization schedules and PDF/Excel downloads.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
