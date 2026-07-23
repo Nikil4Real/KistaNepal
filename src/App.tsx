@@ -71,6 +71,14 @@ const TRANSLATIONS = {
     equatedMonthly: "Equated Monthly",
     epiMethod: "EPI METHOD",
     equatedPrincipal: "Equated Principal",
+    withDownPayment: "With Down Payment",
+    withoutDownPayment: "Without Down Payment",
+    includingDownPayment: "Including Down Payment",
+    withoutIncludingDownPayment: "Without Down Payment",
+    totalAssetPrice: "Loan Amount / Product Price (NPR)",
+    downPaymentLabel: "Down Payment Amount (NPR)",
+    netLoanPrincipal: "Net Financed Principal",
+    downPaymentSummary: "Down Payment",
     loanParameters: "Loan Parameters",
     configureParams: "Configure parameters according to Nepal standards.",
     loanAmount: "Loan Amount (NPR)",
@@ -122,6 +130,14 @@ const TRANSLATIONS = {
     equatedMonthly: "समान मासिक किस्ता",
     epiMethod: "इपिआई विधि",
     equatedPrincipal: "समान साँवा किस्ता",
+    withDownPayment: "डाउनपेमेन्ट सहित",
+    withoutDownPayment: "डाउनपेमेन्ट बिना",
+    includingDownPayment: "डाउनपेमेन्ट सहित",
+    withoutIncludingDownPayment: "डाउनपेमेन्ट बिना",
+    totalAssetPrice: "कुल सामानको मूल्य (रु)",
+    downPaymentLabel: "डाउनपेमेन्ट रकम (रु)",
+    netLoanPrincipal: "खुद ऋण रकम",
+    downPaymentSummary: "डाउनपेमेन्ट",
     loanParameters: "कर्जा मापदण्डहरू",
     configureParams: "नेपालको बैंकिङ मानक अनुसार विवरणहरू भर्नुहोस्।",
     loanAmount: "कर्जा रकम (रु)",
@@ -144,8 +160,8 @@ const TRANSLATIONS = {
     grandTotal: "जम्मा बुझाउनुपर्ने रकम",
     chartPrincipal: "साँवा रकम",
     chartInterest: "ब्याज रकम",
-    howEmiWorks: "EMI कसरी काम गर्छ?",
-    howEpiWorks: "EPI कसरी काम गर्छ?",
+    howEmiWorks: "How EMI Works?",
+    howEpiWorks: "How EPI Works?",
     emiExplanation: "इएमआई (समान मासिक किस्ता) मा, तपाईंको मासिक भुक्तानी सधैं समान रहन्छ। सुरुका महिनाहरूमा किस्ताको ठूलो हिस्सा ब्याज चुक्ता गर्न जान्छ। समय बित्दै जाँदा, ब्याजको हिस्सा घट्दै जान्छ र साँवा भुक्तानीको हिस्सा बढ्दै जान्छ।",
     epiExplanation: "इपिआई (समान साँवा किस्ता) मा, हरेक महिना साँवाको भुक्तानी बराबर भागमा बाँडिन्छ। ब्याज भने बाँकी रहेको साँवा रकममा मात्र गणना गरिन्छ। यसले गर्दा सुरुका महिनाहरूमा भुक्तानी बढी हुन्छ, तर समग्रमा तिर्नुपर्ने कुल ब्याज रकम उल्लेख्य रूपधमा घट्छ।",
     amortizationSchedule: "ऋण भुक्तानी तालिका",
@@ -173,8 +189,10 @@ const TRANSLATIONS = {
 export default function App() {
   // Calculator Parameters State
   const [calcType, setCalcType] = useState<'EMI' | 'EPI'>('EMI');
+  const [emiMode, setEmiMode] = useState<'without_dp' | 'with_dp'>('without_dp');
   const [bankName, setBankName] = useState('Rastriya Banijya Bank');
   const [amount, setAmount] = useState<number>(1500000); // Default 15 Lakhs NPR
+  const [downPayment, setDownPayment] = useState<number>(300000); // Default 3 Lakhs NPR (20%)
   const [rate, setRate] = useState<number>(10.5); // Default 10.5%
   const [tenure, setTenure] = useState<number>(5); // Default 5 years
   const [tenureType, setTenureType] = useState<'years' | 'months'>('years');
@@ -191,7 +209,9 @@ export default function App() {
 
   // Compute Amortization Schedule on parameters change
   useEffect(() => {
-    const P = amount || 0;
+    const P = (calcType === 'EMI' && emiMode === 'with_dp')
+      ? Math.max(0, (amount || 0) - (downPayment || 0))
+      : (amount || 0);
     const R = rate || 0;
     const n = tenureType === 'years' ? (tenure || 0) * 12 : (tenure || 0);
 
@@ -271,7 +291,7 @@ export default function App() {
         setLastPayment(tempSchedule[tempSchedule.length - 1].payment);
       }
     }
-  }, [calcType, amount, rate, tenure, tenureType]);
+  }, [calcType, emiMode, amount, downPayment, rate, tenure, tenureType]);
 
   /**
    * Vedic Format Number System Formatter (Lakhs & Crores)
@@ -411,8 +431,11 @@ export default function App() {
   };
 
   // Interest to Principal Chart calculation
-  const grandTotal = (amount || 0) + totalInterest;
-  const principalPct = Math.round(((amount || 0) / (grandTotal || 1)) * 100) || 0;
+  const effectiveLoanAmount = (calcType === 'EMI' && emiMode === 'with_dp')
+    ? Math.max(0, (amount || 0) - (downPayment || 0))
+    : (amount || 0);
+  const grandTotal = effectiveLoanAmount + totalInterest;
+  const principalPct = Math.round((effectiveLoanAmount / (grandTotal || 1)) * 100) || 0;
   const interestPct = 100 - principalPct;
 
   return (
@@ -539,61 +562,198 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* EMI Down Payment Sub-Toggle in Parameter Card */}
+                  {calcType === 'EMI' && (
+                    <div className="mb-5 bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200/80 no-print">
+                      <button
+                        type="button"
+                        onClick={() => setEmiMode('without_dp')}
+                        className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all duration-200 text-center ${emiMode === 'without_dp'
+                          ? 'bg-white text-violet-700 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                      >
+                        {TRANSLATIONS[lang].withoutDownPayment}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEmiMode('with_dp')}
+                        className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all duration-200 text-center ${emiMode === 'with_dp'
+                          ? 'bg-white text-violet-700 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                      >
+                        {TRANSLATIONS[lang].withDownPayment}
+                      </button>
+                    </div>
+                  )}
+
                   <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
 
-                    {/* Loan Amount Input with presets */}
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between items-baseline">
-                        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                          {TRANSLATIONS[lang].loanAmount}
-                        </label>
-                        <span className="text-[10.5px] font-semibold text-violet-700 max-w-[65%] truncate" title={lang === 'NP' ? numberToNepaliWordsInNepali(amount) : numberToNepaliWords(amount)}>
-                          {lang === 'NP' ? numberToNepaliWordsInNepali(amount) : numberToNepaliWords(amount)}
-                        </span>
+                    {/* Loan / Asset Amount Inputs */}
+                    {calcType === 'EMI' && emiMode === 'with_dp' ? (
+                      <div className="space-y-4">
+                        {/* Total Product / Asset Price Input */}
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between items-baseline">
+                            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                              {TRANSLATIONS[lang].totalAssetPrice}
+                            </label>
+                            <span className="text-[10.5px] font-semibold text-violet-700 max-w-[65%] truncate" title={lang === 'NP' ? numberToNepaliWordsInNepali(amount) : numberToNepaliWords(amount)}>
+                              {lang === 'NP' ? numberToNepaliWordsInNepali(amount) : numberToNepaliWords(amount)}
+                            </span>
+                          </div>
+                          <div className="relative flex items-center">
+                            <span className="absolute left-4 font-bold text-slate-400 text-sm">{TRANSLATIONS[lang].currencySymbol}</span>
+                            <input
+                              type="number"
+                              min="1000"
+                              step="1000"
+                              value={amount || ''}
+                              onChange={(e) => setAmount(Number(e.target.value))}
+                              className="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-violet-600 focus:ring-4 focus:ring-violet-100 transition-all duration-200 outline-none text-sm font-bold text-left"
+                            />
+                          </div>
+                          {/* Amount Presets */}
+                          <div className="flex flex-wrap gap-1.5 mt-2 no-print">
+                            <button
+                              type="button"
+                              onClick={() => handleAmountPreset(100000)}
+                              className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 hover:bg-violet-100 hover:text-violet-700 rounded-lg text-slate-600 transition-all duration-150"
+                            >
+                              {lang === 'NP' ? '१ लाख' : '1 Lakh'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleAmountPreset(500000)}
+                              className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 hover:bg-violet-100 hover:text-violet-700 rounded-lg text-slate-600 transition-all duration-150"
+                            >
+                              {lang === 'NP' ? '५ लाख' : '5 Lakh'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleAmountPreset(1500000)}
+                              className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 hover:bg-violet-100 hover:text-violet-700 rounded-lg text-slate-600 transition-all duration-150"
+                            >
+                              {lang === 'NP' ? '१५ लाख' : '15 Lakh'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleAmountPreset(5000000)}
+                              className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 hover:bg-violet-100 hover:text-violet-700 rounded-lg text-slate-600 transition-all duration-150"
+                            >
+                              {lang === 'NP' ? '५० लाख' : '50 Lakh'}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Down Payment Input */}
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between items-baseline">
+                            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                              {TRANSLATIONS[lang].downPaymentLabel}
+                            </label>
+                            <span className="text-[10.5px] font-semibold text-violet-700 max-w-[65%] truncate" title={lang === 'NP' ? numberToNepaliWordsInNepali(downPayment) : numberToNepaliWords(downPayment)}>
+                              {lang === 'NP' ? numberToNepaliWordsInNepali(downPayment) : numberToNepaliWords(downPayment)}
+                            </span>
+                          </div>
+                          <div className="relative flex items-center">
+                            <span className="absolute left-4 font-bold text-slate-400 text-sm">{TRANSLATIONS[lang].currencySymbol}</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max={amount}
+                              step="1000"
+                              value={downPayment || ''}
+                              onChange={(e) => setDownPayment(Number(e.target.value))}
+                              className="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-violet-600 focus:ring-4 focus:ring-violet-100 transition-all duration-200 outline-none text-sm font-bold text-left"
+                            />
+                          </div>
+                          {/* Percentage Presets */}
+                          <div className="flex flex-wrap gap-1.5 mt-2 no-print">
+                            {[10, 20, 30, 40, 50].map((pct) => (
+                              <button
+                                key={pct}
+                                type="button"
+                                onClick={() => setDownPayment(Math.round(((amount || 0) * pct) / 100))}
+                                className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 hover:bg-violet-100 hover:text-violet-700 rounded-lg text-slate-600 transition-all duration-150"
+                              >
+                                {pct}%
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Financed Principal Info Box */}
+                        <div className="p-3.5 bg-violet-50/80 border border-violet-100 rounded-xl flex justify-between items-center">
+                          <div>
+                            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                              {TRANSLATIONS[lang].netLoanPrincipal}
+                            </span>
+                            <span className="text-[11px] font-semibold text-violet-700">
+                              {lang === 'NP' ? numberToNepaliWordsInNepali(effectiveLoanAmount) : numberToNepaliWords(effectiveLoanAmount)}
+                            </span>
+                          </div>
+                          <span className="text-sm font-black text-violet-900">
+                            {formatNepaliCurrency(effectiveLoanAmount)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="relative flex items-center">
-                        <span className="absolute left-4 font-bold text-slate-400 text-sm">{TRANSLATIONS[lang].currencySymbol}</span>
-                        <input
-                          type="number"
-                          min="1000"
-                          step="1000"
-                          value={amount || ''}
-                          onChange={(e) => setAmount(Number(e.target.value))}
-                          className="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-violet-600 focus:ring-4 focus:ring-violet-100 transition-all duration-200 outline-none text-sm font-bold text-left"
-                        />
+                    ) : (
+                      /* Standard Loan Amount Input without Down Payment */
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-baseline">
+                          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            {TRANSLATIONS[lang].loanAmount}
+                          </label>
+                          <span className="text-[10.5px] font-semibold text-violet-700 max-w-[65%] truncate" title={lang === 'NP' ? numberToNepaliWordsInNepali(amount) : numberToNepaliWords(amount)}>
+                            {lang === 'NP' ? numberToNepaliWordsInNepali(amount) : numberToNepaliWords(amount)}
+                          </span>
+                        </div>
+                        <div className="relative flex items-center">
+                          <span className="absolute left-4 font-bold text-slate-400 text-sm">{TRANSLATIONS[lang].currencySymbol}</span>
+                          <input
+                            type="number"
+                            min="1000"
+                            step="1000"
+                            value={amount || ''}
+                            onChange={(e) => setAmount(Number(e.target.value))}
+                            className="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-violet-600 focus:ring-4 focus:ring-violet-100 transition-all duration-200 outline-none text-sm font-bold text-left"
+                          />
+                        </div>
+                        {/* Preset buttons */}
+                        <div className="flex flex-wrap gap-1.5 mt-2 no-print">
+                          <button
+                            type="button"
+                            onClick={() => handleAmountPreset(500000)}
+                            className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 hover:bg-violet-100 hover:text-violet-700 rounded-lg text-slate-600 transition-all duration-150"
+                          >
+                            {lang === 'NP' ? '५ लाख' : '5 Lakh'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAmountPreset(1500000)}
+                            className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 hover:bg-violet-100 hover:text-violet-700 rounded-lg text-slate-600 transition-all duration-150"
+                          >
+                            {lang === 'NP' ? '१५ लाख' : '15 Lakh'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAmountPreset(5000000)}
+                            className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 hover:bg-violet-100 hover:text-violet-700 rounded-lg text-slate-600 transition-all duration-150"
+                          >
+                            {lang === 'NP' ? '५० लाख' : '50 Lakh'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAmountPreset(10000000)}
+                            className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 hover:bg-violet-100 hover:text-violet-700 rounded-lg text-slate-600 transition-all duration-150"
+                          >
+                            {lang === 'NP' ? '१ करोड' : '1 Crore'}
+                          </button>
+                        </div>
                       </div>
-                      {/* Preset buttons */}
-                      <div className="flex flex-wrap gap-1.5 mt-2 no-print">
-                        <button
-                          type="button"
-                          onClick={() => handleAmountPreset(500000)}
-                          className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 hover:bg-violet-100 hover:text-violet-700 rounded-lg text-slate-600 transition-all duration-150"
-                        >
-                          {lang === 'NP' ? '५ लाख' : '5 Lakh'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleAmountPreset(1500000)}
-                          className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 hover:bg-violet-100 hover:text-violet-700 rounded-lg text-slate-600 transition-all duration-150"
-                        >
-                          {lang === 'NP' ? '१५ लाख' : '15 Lakh'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleAmountPreset(5000000)}
-                          className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 hover:bg-violet-100 hover:text-violet-700 rounded-lg text-slate-600 transition-all duration-150"
-                        >
-                          {lang === 'NP' ? '५० लाख' : '50 Lakh'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleAmountPreset(10000000)}
-                          className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 hover:bg-violet-100 hover:text-violet-700 rounded-lg text-slate-600 transition-all duration-150"
-                        >
-                          {lang === 'NP' ? '१ करोड' : '1 Crore'}
-                        </button>
-                      </div>
-                    </div>
+                    )}
 
                     {/* Annual Interest Rate (%) */}
                     <div className="space-y-1.5">
@@ -783,8 +943,15 @@ export default function App() {
                     {/* Summary Metrics Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 py-6 border-t border-b border-slate-800/80 my-6">
                       <div className="space-y-1">
-                        <span className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">{TRANSLATIONS[lang].loanPrincipal}</span>
-                        <p className="text-sm font-bold text-slate-100">{formatNepaliCurrency(amount)}</p>
+                        <span className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">
+                          {calcType === 'EMI' && emiMode === 'with_dp' ? TRANSLATIONS[lang].netLoanPrincipal : TRANSLATIONS[lang].loanPrincipal}
+                        </span>
+                        <p className="text-sm font-bold text-slate-100">{formatNepaliCurrency(effectiveLoanAmount)}</p>
+                        {calcType === 'EMI' && emiMode === 'with_dp' && (
+                          <p className="text-[10px] text-slate-400">
+                            {TRANSLATIONS[lang].downPaymentSummary}: {formatNepaliCurrency(downPayment)}
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-1">
                         <span className="text-[11px] text-violet-400 font-medium uppercase tracking-wider">{TRANSLATIONS[lang].totalInterest}</span>
@@ -966,7 +1133,9 @@ export default function App() {
           <div>
             <p className="text-[9px] text-slate-500 uppercase tracking-wider font-bold">{TRANSLATIONS[lang].calculationMethod}</p>
             <p className="text-sm font-extrabold text-slate-900 mt-0.5">
-              {calcType === 'EMI' ? TRANSLATIONS[lang].emiMethod : TRANSLATIONS[lang].epiMethod}
+              {calcType === 'EMI'
+                ? (emiMode === 'with_dp' ? `${TRANSLATIONS[lang].emiMethod} (${TRANSLATIONS[lang].withDownPayment})` : TRANSLATIONS[lang].emiMethod)
+                : TRANSLATIONS[lang].epiMethod}
             </p>
           </div>
         </div>
@@ -974,8 +1143,15 @@ export default function App() {
         {/* Summary metrics row */}
         <div className="grid grid-cols-3 gap-4 mb-6 p-4 border-t border-b border-slate-200">
           <div>
-            <p className="text-[8px] text-slate-500 uppercase tracking-wider font-bold">{TRANSLATIONS[lang].loanPrincipal}</p>
-            <p className="text-xs font-bold text-slate-800 mt-0.5">{formatNepaliCurrency(amount)}</p>
+            <p className="text-[8px] text-slate-500 uppercase tracking-wider font-bold">
+              {calcType === 'EMI' && emiMode === 'with_dp' ? TRANSLATIONS[lang].netLoanPrincipal : TRANSLATIONS[lang].loanPrincipal}
+            </p>
+            <p className="text-xs font-bold text-slate-800 mt-0.5">{formatNepaliCurrency(effectiveLoanAmount)}</p>
+            {calcType === 'EMI' && emiMode === 'with_dp' && (
+              <p className="text-[8px] text-slate-500 mt-0.5">
+                {TRANSLATIONS[lang].downPaymentSummary}: {formatNepaliCurrency(downPayment)}
+              </p>
+            )}
           </div>
           <div>
             <p className="text-[8px] text-slate-500 uppercase tracking-wider font-bold">{TRANSLATIONS[lang].totalInterest}</p>
